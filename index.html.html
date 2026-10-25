@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<title>Jhandi Munda Camera Analyzer</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#151d30;--line:#2a3650;--text:#eef3ff;--muted:#9eacc5;--accent:#6ee7b7;--warn:#fbbf24}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(160deg,#101a2e,#090d18 65%);color:var(--text);font:16px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:env(safe-area-inset-top) 14px env(safe-area-inset-bottom)}
+main{max-width:760px;margin:auto;padding:18px 0 36px}.eyebrow{color:var(--accent);font-size:12px;letter-spacing:.14em;font-weight:800;text-transform:uppercase}
+h1{font-size:clamp(26px,6vw,38px);line-height:1.08;margin:8px 0}p{color:var(--muted);line-height:1.5}.panel{background:rgba(21,29,48,.94);border:1px solid var(--line);border-radius:18px;padding:15px;margin:14px 0;box-shadow:0 10px 30px #0002}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.row>*{flex:1}.btn{border:0;border-radius:12px;padding:13px 15px;font-weight:750;font-size:15px;background:var(--accent);color:#06261b;cursor:pointer}.btn.secondary{background:#26334c;color:var(--text);border:1px solid #3a4967}.btn.danger{background:#42232a;color:#ffd8de;border:1px solid #743c48}.btn:disabled{opacity:.45}
+video{width:100%;aspect-ratio:4/3;object-fit:cover;background:#05070c;border-radius:13px;display:block}.camwrap{position:relative}.guide{position:absolute;inset:12% 8%;border:2px dashed #6ee7b7a8;border-radius:12px;pointer-events:none}.hint{font-size:13px;color:var(--muted);margin:9px 0 0}
+.dice-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.die{background:#0e1525;border:1px solid #33415c;border-radius:13px;padding:10px 6px;text-align:center;min-width:0}.die label{display:block;font-size:12px;color:var(--muted);margin-bottom:7px}.die select{width:100%;padding:10px 3px;border-radius:9px;border:1px solid #3a4967;background:#1b2941;color:white;font-size:14px}
+.statgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.stat{background:#0e1525;border:1px solid #293650;border-radius:12px;padding:12px}.stat b{display:block;font-size:22px;margin:3px 0}.stat small{color:var(--muted)}.barrow{display:grid;grid-template-columns:90px 1fr 42px;gap:8px;align-items:center;margin:12px 0;font-size:13px}.bar{height:9px;background:#293650;border-radius:99px;overflow:hidden}.fill{height:100%;background:var(--accent);border-radius:99px}.pill{display:inline-block;background:#25364b;color:#b7f7dd;border-radius:99px;padding:5px 9px;font-size:12px;font-weight:700}.warning{font-size:13px;color:#f6d28a;background:#352b19;border:1px solid #66502a;padding:11px;border-radius:11px;line-height:1.45}.history{display:flex;flex-direction:column;gap:8px}.history-item{display:flex;justify-content:space-between;gap:10px;padding:10px;background:#0e1525;border-radius:10px;font-size:13px}.symbols{color:#dce7ff;line-height:1.7}.foot{font-size:12px;text-align:center;color:#8794ad;margin-top:20px}
+@media(min-width:600px){.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}.two .panel{margin:14px 0}.statgrid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Camera-assisted tracker</div>
+  <h1>Jhandi Munda<br>Live Analyzer</h1>
+  <p>Point your iPhone at the six dice, review the symbols, then save each round to build a live statistics log.</p>
+
+  <section class="panel">
+    <div class="row" style="margin-bottom:12px"><div><strong>1. Live camera</strong><div class="hint">Use a steady, top-down view with bright, even light.</div></div><span class="pill">iPhone ready</span></div>
+    <div class="camwrap"><video id="video" autoplay playsinline muted></video><div class="guide"></div></div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn" id="start">Start camera</button>
+      <button class="btn secondary" id="stop" disabled>Stop</button>
+    </div>
+    <p class="hint" id="cameraStatus">Camera is off. Safari requires camera permission and a secure HTTPS page.</p>
+  </section>
+
+  <section class="panel">
+    <strong>2. Confirm the six dice</strong>
+    <p class="hint">Prototype note: this first version does not automatically recognize symbols from pixels. Select the visible symbol for each die; this lets you test the tracking and probability dashboard while recognition is added later.</p>
+    <div class="dice-grid" id="diceGrid"></div>
+    <div class="row" style="margin-top:13px">
+      <button class="btn" id="save">Save round</button>
+      <button class="btn secondary" id="resetDice">Reset selection</button>
+    </div>
+  </section>
+
+  <div class="two">
+    <section class="panel">
+      <strong>Current round</strong>
+      <p class="hint">Counts from the six selected dice.</p>
+      <div id="currentCounts"></div>
+    </section>
+    <section class="panel">
+      <strong>Probability guide</strong>
+      <p class="hint">For one chosen symbol among six fair, independent dice.</p>
+      <div class="statgrid">
+        <div class="stat"><small>Appears 0 times</small><b>33.49%</b></div>
+        <div class="stat"><small>Appears 1+ times</small><b>66.51%</b></div>
+      </div>
+      <p class="hint">Theoretical chance of a symbol appearing at least once—not a forecast of the next roll.</p>
+    </section>
+  </div>
+
+  <section class="panel">
+    <div class="row"><div><strong>Session statistics</strong><div class="hint">Based only on rounds you save.</div></div><button class="btn danger" id="clearHistory">Clear history</button></div>
+    <div class="statgrid" id="summary" style="margin-top:12px"></div>
+    <div id="freq"></div>
+  </section>
+
+  <section class="panel">
+    <strong>Recent rounds</strong>
+    <div class="hint" style="margin-bottom:10px">Newest first. Data stays in this page while it is open.</div>
+    <div class="history" id="history"><p>No rounds saved yet.</p></div>
+  </section>
+
+  <div class="warning">Important: dice outcomes are random. Historical frequencies and streaks do not reliably predict the next result. This prototype is a camera preview + manual confirmation + statistics tool, not an automatic predictor or a certified dice-recognition system.</div>
+  <div class="foot">Prototype v0.1 · Best used with a stable phone stand and a clear tabletop.</div>
+</main>
+<script>
+const symbols = [
+  {value:"Jhandi", label:"Jhandi · Flag"},
+  {value:"Munda", label:"Munda · Head"},
+  {value:"Paan", label:"Paan · Heart"},
+  {value:"Eent", label:"Eent · Diamond"},
+  {value:"Hukam", label:"Hukam · Spade"},
+  {value:"Chidi", label:"Chidi · Club"}
+];
+const grid=document.getElementById('diceGrid');
+for(let i=0;i<6;i++){
+  const wrap=document.createElement('div');wrap.className='die';
+  const label=document.createElement('label');label.textContent='Die '+(i+1);
+  const select=document.createElement('select');select.id='die'+i;
+  symbols.forEach(s=>{const o=document.createElement('option');o.value=s.value;o.textContent=s.label;select.appendChild(o)});
+  select.addEventListener('change',renderCurrent);
+  wrap.append(label,select);grid.appendChild(wrap);
+}
+let history=[];
+const countsOf=arr=>symbols.map(s=>({name:s.value,count:arr.filter(x=>x===s.value).length}));
+function selected(){return Array.from({length:6},(_,i)=>document.getElementById('die'+i).value)}
+function renderCurrent(){
+ const counts=countsOf(selected());
+ document.getElementById('currentCounts').innerHTML=counts.map(c=>`<div class="barrow"><span>${c.name}</span><div class="bar"><div class="fill" style="width:${c.count/6*100}%"></div></div><b>${c.count}/6</b></div>`).join('');
+}
+function renderStats(){
+ const total=history.length, rolls=total*6;
+ document.getElementById('summary').innerHTML=[
+  ['Rounds saved',total],['Dice recorded',rolls],['Most frequent',total?mostFrequent():'—'],['Session status',total?'Tracking':'Waiting']
+ ].map(([a,b])=>`<div class="stat"><small>${a}</small><b style="font-size:${String(b).length>10?'16px':'22px'}">${b}</b></div>`).join('');
+ const overall=symbols.map(s=>({name:s.value,count:history.reduce((n,r)=>n+r.filter(x=>x===s.value).length,0)}));
+ document.getElementById('freq').innerHTML=total?'<p class="hint">Observed symbol frequency across saved dice (not a prediction).</p>'+overall.map(c=>`<div class="barrow"><span>${c.name}</span><div class="bar"><div class="fill" style="width:${rolls?c.count/rolls*100:0}%"></div></div><b>${rolls?(c.count/rolls*100).toFixed(1):'0.0'}%</b></div>`).join(''):'<p class="hint">Save a few rounds to see observed frequencies.</p>';
+ document.getElementById('history').innerHTML=total?history.slice().reverse().slice(0,12).map((r,i)=>`<div class="history-item"><span>Round ${total-i}</span><span>${countsOf(r).filter(c=>c.count).map(c=>c.name+' ×'+c.count).join(' · ')}</span></div>`).join(''):'<p>No rounds saved yet.</p>';
+}
+function mostFrequent(){const all=symbols.map(s=>({name:s.value,count:history.reduce((n,r)=>n+r.filter(x=>x===s.value).length,0)}));all.sort((a,b)=>b.count-a.count);return all[0].name}
+document.getElementById('save').addEventListener('click',()=>{history.push(selected());renderStats();});
+document.getElementById('resetDice').addEventListener('click',()=>{for(let i=0;i<6;i++)document.getElementById('die'+i).selectedIndex=0;renderCurrent()});
+document.getElementById('clearHistory').addEventListener('click',()=>{if(confirm('Clear all saved rounds for this session?')){history=[];renderStats()}});
+let stream=null;
+document.getElementById('start').addEventListener('click',async()=>{
+ const status=document.getElementById('cameraStatus');
+ try{
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:960}},audio:false});
+  document.getElementById('video').srcObject=stream;
+  status.textContent='Camera running. Position all six dice inside the dashed guide, then confirm each symbol below.';
+  document.getElementById('start').disabled=true;document.getElementById('stop').disabled=false;
+ }catch(e){status.textContent='Could not start camera: '+(e.message||e.name)+'. Allow camera access and open this page over HTTPS in Safari.'}
+});
+document.getElementById('stop').addEventListener('click',()=>{
+ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+ document.getElementById('video').srcObject=null;
+ document.getElementById('cameraStatus').textContent='Camera stopped.';
+ document.getElementById('start').disabled=false;document.getElementById('stop').disabled=true;
+});
+renderCurrent();renderStats();
+</script>
+</body>
+</html>
